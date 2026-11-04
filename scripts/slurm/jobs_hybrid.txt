@@ -1,0 +1,10 @@
+# Hybrid models: graph + molecular descriptors (molar-weighted), same folds and seeds as the
+# graph-only and descriptor-only runs. First build the feature file:
+#   sbatch scripts/slurm/cpu_job.sbatch python scripts/build_descriptor_features.py --weighting molar --out data/descriptor_features_molar.csv
+#   sbatch --array=1-6 scripts/slurm/array_job.sbatch scripts/slurm/jobs_hybrid.txt
+elecgnn train --task ioncon --data data/unified_md.csv --split file --folds-file data/folds_inhouse.csv --fold-col fold_ethers --test-folds 0 --seeds 0 1 2 3 4 5 6 7 8 9 --model gat --extra-features data/descriptor_features_molar.csv --feature-set file --out results/hybrid/fold_ethers/gat_desc_molar
+elecgnn train --task ioncon --data data/unified_md.csv --split file --folds-file data/folds_inhouse.csv --fold-col fold_solvent --seeds 0 1 2 --model gat --extra-features data/descriptor_features_molar.csv --feature-set file --out results/hybrid/fold_solvent/gat_desc_molar
+elecgnn train --task ioncon --data data/unified_md.csv --split file --folds-file data/folds_inhouse.csv --fold-col fold_class --seeds 0 1 2 --model gat --extra-features data/descriptor_features_molar.csv --feature-set file --out results/hybrid/fold_class/gat_desc_molar
+elecgnn train --task ioncon --data data/unified_md.csv --split file --folds-file data/folds_inhouse.csv --fold-col fold_ethers --test-folds 0 --seeds 0 1 2 3 4 5 6 7 8 9 --model gcn --extra-features data/descriptor_features_molar.csv --feature-set file --out results/hybrid/fold_ethers/gcn_desc_molar
+elecgnn train --task ioncon --data data/unified_md.csv --split file --folds-file data/folds_inhouse.csv --fold-col fold_solvent --seeds 0 1 2 --model gcn --extra-features data/descriptor_features_molar.csv --feature-set file --out results/hybrid/fold_solvent/gcn_desc_molar
+elecgnn train --task ioncon --data data/unified_md.csv --split file --folds-file data/folds_inhouse.csv --fold-col fold_class --seeds 0 1 2 --model gcn --extra-features data/descriptor_features_molar.csv --feature-set file --out results/hybrid/fold_class/gcn_desc_molar

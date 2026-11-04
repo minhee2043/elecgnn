@@ -1,0 +1,6 @@
+# Descriptor baselines: 9 models x {none, molar} weighting, same folds and seeds as the GNN runs.
+#   sbatch --array=1-4 scripts/slurm/cpu_array_job.sbatch scripts/slurm/jobs_descriptors.txt
+python scripts/descriptor_baselines.py --fold-col fold_random_s0 --seeds 0 1 2 --shap
+python scripts/descriptor_baselines.py --fold-col fold_solvent --seeds 0 1 2 --shap
+python scripts/descriptor_baselines.py --fold-col fold_class --seeds 0 1 2 --shap
+python scripts/descriptor_baselines.py --fold-col fold_ethers --test-folds 0 --seeds 0 1 2 3 4 5 6 7 8 9 --shap

@@ -1,0 +1,3 @@
+# Raman analysis: band fitting (CPU-light) + OEDB predictor trained on GPU and applied to every Raman system.
+#   sbatch scripts/slurm/gpu_job.sbatch elecgnn raman --raman data/oedb-experimental-v2026-05-11.csv --md data/oedb-electrolytes-v2026-05-11_1.csv --unified data/unified_md.csv --predict --out results/raman
+elecgnn raman --raman data/oedb-experimental-v2026-05-11.csv --md data/oedb-electrolytes-v2026-05-11_1.csv --unified data/unified_md.csv --predict --out results/raman

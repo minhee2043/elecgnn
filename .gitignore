@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Run outputs
+results/
+figures/
+logs/
+*.pt
+*.out
+
+# Data: only the curated in-house files are tracked; downloaded and generated files are not
+data/*
+!data/README.md
+!data/solvent_db_1_clean.csv
+!data/solvent_db_changelog.csv
+!data/folds_inhouse.csv
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store

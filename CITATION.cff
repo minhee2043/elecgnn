@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the article below."
+title: "elecgnn: graph neural networks and descriptor baselines for liquid-electrolyte property prediction"
+authors:
+  - family-names: "Park"
+    given-names: "Minhee"
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/minhee2043/elecgnn"
+preferred-citation:
+  type: article
+  title: "Coverage, not architecture: what limits machine-learning extrapolation for liquid battery electrolytes"
+  authors:
+    - family-names: "Park"
+      given-names: "Minhee"
+  journal: "Digital Discovery"
+  year: 2026
+  status: submitted
