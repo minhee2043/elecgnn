@@ -354,14 +354,17 @@ def fig_external_lce(results: Path, out: Path, ax=None) -> None:
     for label, run in ours:
         s = summary(results / "lce_ext13" / run)["RMSE"]
         rows.append((label, s["mean"], s["std"], "this work (10 seeds)"))
-    published = [("Kim et al. linear (published)", 0.162), ("BART-SA", 0.148), ("MM-MoLFormer", 0.195),
+    published = [("Kim linear, published", 0.162), ("BART-SA", 0.148), ("MM-MoLFormer", 0.195),
                  ("MoLFormer", 0.213), ("F-GCN (TL)", 0.39)]  # fmt: skip
     rows += [(lab, v, 0.0, "published") for lab, v in published]
     linear = results / "lce_ext13" / "linear_kim_features.json"
-    if linear.exists():
-        rows.append(
-            ("Kim features, linear (refit)", json.loads(linear.read_text())["RMSE"], 0.0, "this work")
+    if not linear.exists():
+        raise FileNotFoundError(
+            2, "run scripts/kim_linear_baseline.py first (refitted Kim baselines)", str(linear)
         )
+    kim = json.loads(linear.read_text())
+    rows.append(("Kim linear, refit", kim["RMSE"], 0.0, "this work"))
+    rows.append(("Kim RF, refit", kim["rf_RMSE_mean"], kim["rf_RMSE_sd"], "this work"))
     rows.sort(key=lambda r: r[1])
     fig, ax, own = _canvas(ax, SINGLE)
     colors = {"this work (10 seeds)": BLUE, "this work": GREEN, "published": GREY}
@@ -370,7 +373,7 @@ def fig_external_lce(results: Path, out: Path, ax=None) -> None:
     ax.axvline(0.05, color=VERMILION, ls="--", lw=0.75, label="replicate noise")
     ax.legend(loc="lower right")
     ax.set_yticks(range(len(rows)), [r[0] for r in rows])
-    ax.set_xlabel("RMSE on 13 external electrolytes (LCE)")
+    ax.set_xlabel("RMSE, 13 external electrolytes (LCE)")
     if own:
         save(fig, out, "fig_external_lce")
 
@@ -383,7 +386,6 @@ def fig_attention(results: Path, out: Path, ax=None) -> None:
     ax.barh(s["group"], s["attn_ratio"], color=np.where(s["attn_ratio"] > 1, VERMILION, BLUE))
     ax.axvline(1, color="k", lw=0.6)
     ax.set_xlabel("Attention received / uniform")
-    ax.set_title("GAT solvent encoder (1 = uniform)")
     if own:
         save(fig, out, "fig_attention")
 
@@ -547,7 +549,7 @@ def fig_parity_failure(results: Path, data: Path, out: Path, axes=None) -> None:
               ("Ethers held out: GAT + descriptors",
                results / "hybrid/fold_ethers/gat_desc_molar/predictions.csv")]  # fmt: skip
     fig, axes, own = _canvas_multi(axes, 1, 3, DOUBLE, sharex=True, sharey=True)
-    for ax, (title, path) in zip(axes, panels, strict=True):
+    for ax, (_title, path) in zip(axes, panels, strict=True):
         g = _row_means(path)
         ether = g["row_id"].map(cls).isin(ETHER_CLASSES)
         ax.scatter(
@@ -556,7 +558,7 @@ def fig_parity_failure(results: Path, data: Path, out: Path, axes=None) -> None:
         ax.scatter(g.y_true[ether], 10 ** g.log_pred[ether], s=6, c=VERMILION, linewidths=0, label="Ethers")
         lim = (0.03, 60)
         ax.plot(lim, lim, "k-", lw=0.6)
-        ax.set(xscale="log", yscale="log", xlim=lim, ylim=lim, title=title, xlabel="MD \u03c3 (mS cm$^{-1}$)")
+        ax.set(xscale="log", yscale="log", xlim=lim, ylim=lim, xlabel="MD \u03c3 (mS cm$^{-1}$)")
         note = f"log$_{{10}}$ MAE {g.abs_err.mean():.2f}\nmedian error {10 ** g.abs_err.median():.1f}\u00d7"
         ax.text(0.04, 0.96, note, transform=ax.transAxes, va="top")
     axes[0].set_ylabel("Predicted \u03c3 (mS cm$^{-1}$)")
@@ -594,9 +596,11 @@ def fig_screening(results: Path, out: Path, top: float = 0.10, ax=None) -> None:
 def _tsne_layout(fig, gs=None):
     """2 x 2 t-SNE panels plus a side column (legend for row 1, colour bar for row 2) of equal widths."""
     gs = gs or fig.add_gridspec(1, 1)[0]
-    grid = gs.subgridspec(2, 3, width_ratios=[1, 1, 0.42], wspace=0.25, hspace=0.45)
+    split = gs.subgridspec(1, 2, width_ratios=[2.0, 0.42], wspace=0.03)
+    grid = split[0].subgridspec(2, 2, wspace=0.32, hspace=0.18)
+    sides = split[1].subgridspec(2, 1, hspace=0.18)
     axes = np.array([[fig.add_subplot(grid[i, j]) for j in range(2)] for i in range(2)])
-    side = [fig.add_subplot(grid[i, 2]) for i in range(2)]
+    side = [fig.add_subplot(sides[i]) for i in range(2)]
     for ax in side:
         ax.axis("off")
     return axes, side
@@ -614,14 +618,14 @@ def fig_tsne_control(results: Path, out: Path, axes=None, side=None) -> None:
         fig = plt.figure(figsize=(6.7, 5.4))
         axes, side = _tsne_layout(fig)
     fig = axes.flat[0].figure
-    for i, (name, d, colour_by) in enumerate(sets):
+    for i, (_name, d, colour_by) in enumerate(sets):
         emb = pd.read_csv(d / "embeddings.csv")
         sc = json.loads((d / "embedding_scores.json").read_text())
         variants = [
             ("trained GAT", "knn_r2_trained", "trained"),
             ("random-weight GAT", "knn_r2_random_init", "random"),
         ]
-        for j, (kind, key, tag) in enumerate(variants):
+        for j, (_kind, key, tag) in enumerate(variants):
             ax = axes[i, j]
             x, y = emb[f"tsne_{tag}_1"], emb[f"tsne_{tag}_2"]
             if colour_by == "class" and "solvent_class" in emb:
@@ -635,14 +639,14 @@ def fig_tsne_control(results: Path, out: Path, axes=None, side=None) -> None:
                 h = ax.scatter(
                     x, y, c=emb["y_transformed"], s=7, cmap="viridis", edgecolors="k", linewidths=0.2
                 )
-            ax.set(xticks=[], yticks=[], xlabel="t-SNE 1", ylabel="t-SNE 2",
-                   title=f"{name}, {kind}\nk-NN R$^2$ = {sc[key]:.2f}")  # fmt: skip
+            ax.set(xticks=[], yticks=[], xlabel="t-SNE 1", ylabel="t-SNE 2")
+            ax.text(0.03, 0.97, f"k-NN R$^2$ = {sc[key]:.2f}", transform=ax.transAxes, va="top", fontsize=6.5)
         if colour_by == "class" and "solvent_class" in emb:
             handles, labels = axes[i, 1].get_legend_handles_labels()
             side[i].legend(handles, labels, loc="center left", fontsize=5.5, title="Solvent class",
                            title_fontsize=6, handletextpad=0.2, borderaxespad=0)  # fmt: skip
         else:
-            cax = side[i].inset_axes([0.0, 0.1, 0.1, 0.8])
+            cax = side[i].inset_axes([0.0, 0.08, 0.09, 0.84])
             fig.colorbar(h, cax=cax, label=colour_by)
     if own:
         save(fig, out, "fig_tsne_control")
@@ -651,12 +655,12 @@ def fig_tsne_control(results: Path, out: Path, axes=None, side=None) -> None:
 def fig_shap_extrapolation(results: Path, out: Path, n_top: int = 10, axes=None) -> None:
     """(E) LightGBM (molar) SHAP importance: random split vs all ethers held out."""
     fig, axes, own = _canvas_multi(axes, 1, 2, DOUBLE)
-    for ax, (split, title) in zip(axes, [("fold_random_s0", "Random split"),
+    for ax, (split, _title) in zip(axes, [("fold_random_s0", "Random split"),
                                          ("fold_ethers", "Ethers held out")], strict=True):  # fmt: skip
         imp = pd.read_csv(results / "descriptors" / split / "LGBM_molar" / "shap_importance.csv").head(n_top)
         imp = imp.iloc[::-1]
         ax.barh([FEATURE_LABELS.get(f, f) for f in imp.feature], imp.mean_abs_shap, color=GREEN)
-        ax.set(title=title, xlabel="mean |SHAP| (log$_{10}$ \u03c3)")
+        ax.set(xlabel="mean |SHAP| (log$_{10}$ \u03c3)")
     if own:
         save(fig, out, "fig_shap_extrapolation")
 
@@ -702,8 +706,9 @@ def fig_uncertainty(results: Path, data: Path, out: Path, axes=None) -> None:
         rho_row = spearmanr(g.spread, g.abs_err)[0]
         if label == "GAT":
             axes[0].scatter(g.spread, g.abs_err, s=5, c=color, linewidths=0)
-            axes[0].set(xlabel="Seed-ensemble spread (log$_{10}$)", ylabel="|log$_{10}$ error|",
-                        title=f"GAT, leave-class-out: Spearman {rho_row:.2f}")  # fmt: skip
+            axes[0].set(xlabel="Seed-ensemble spread (log$_{10}$)", ylabel="|log$_{10}$ error|")
+            axes[0].text(0.97, 0.96, f"Spearman \u03c1 = {rho_row:.2f}", transform=axes[0].transAxes,
+                         ha="right", va="top")  # fmt: skip
         g["solvent"] = g.row_id.map(u)
         per = g.groupby("solvent")[["spread", "abs_err"]].mean().join(sim)
         bars.append(
@@ -716,9 +721,7 @@ def fig_uncertainty(results: Path, data: Path, out: Path, axes=None) -> None:
     axes[1].set_xticks(x, [b[0] for b in bars])
     lo = min(0.0, *(v for b in bars for v in b[1:]))
     axes[1].set_ylim(lo - 0.05 if lo < 0 else 0, 1)
-    axes[1].set(
-        ylabel="Spearman \u03c1 with per-solvent error", title="Which signal flags unreliable predictions?"
-    )
+    axes[1].set(ylabel="Spearman \u03c1 with per-solvent error")
     axes[1].legend(loc="upper right")
     if own:
         save(fig, out, "fig_uncertainty")
@@ -846,7 +849,6 @@ def fig_coverage_matrix(data: Path, out: Path, ax=None) -> None:
     ax.set_yticks(np.arange(-0.5, M.shape[0]), minor=True)
     ax.grid(which="minor", color="w", lw=1.0)
     ax.tick_params(which="minor", length=0)
-    ax.set_title("Distinct solvents per chemical class")
     if own:
         save(fig, out, "fig_coverage_matrix")
 
@@ -888,8 +890,7 @@ def fig_raman_example(data: Path, out: Path, ax=None, anion: str = "FSI", solven
         ]
         ax.fill_between(nu[win], _gauss(nu[win], amp, cen, fwhm) / scale, color=col, alpha=0.25, lw=0,
                         label=label)  # fmt: skip
-    ax.set(xlabel="Raman shift (cm$^{-1}$)", ylabel="Normalized intensity",
-           title=f"Li{anion} in {solvent}: anion band")  # fmt: skip
+    ax.set(xlabel="Raman shift (cm$^{-1}$)", ylabel="Normalized intensity")
     _inner_legend(ax, loc="upper right", fontsize=5.5)
     if own:
         save(fig, out, "fig_raman_example")
@@ -901,6 +902,8 @@ def fig_raman_md(results: Path, out: Path, ax=None) -> None:
 
     df = pd.read_csv(results / "raman" / "raman_fractions.csv")
     df = df[~df.solvent_overlap & df.CN_anion_MD.notna() & df.f_bound.notna()]
+    # TFSI and PF6 shift too little on coordination to resolve; they are reported in the SI only
+    df = df[df.anion.isin(["FSI", "BF4", "ClO4"])]
     fig, ax, own = _canvas(ax, SINGLE)
     for a, g in df.groupby("anion"):
         rho = spearmanr(g.CN_anion_MD, g.f_bound)[0]
@@ -950,14 +953,52 @@ def fig_raman_predictor(results: Path, out: Path, ax=None) -> None:
 
 def figure7_raman(results: Path, data: Path, out: Path) -> None:
     """Fig. 7  Experimental Raman check of MD solvation structure and of OEDB-based predictions."""
-    fig = plt.figure(figsize=(6.7, 2.9))
-    gs = fig.add_gridspec(1, 3, wspace=0.55)
+    fig = plt.figure(figsize=(6.7, 2.55))
+    gs = fig.add_gridspec(1, 3, left=0.07, right=0.995, wspace=0.42, width_ratios=[1, 1.05, 1.15])
     a, b, c = (fig.add_subplot(gs[0, i]) for i in range(3))
     fig_raman_example(data, out, ax=a)
     fig_raman_md(results, out, ax=b)
     fig_raman_predictor(results, out, ax=c)
     _letters([a, b, c])
     save(fig, out, "Figure7_raman_validation")
+
+
+def fig_si_raman_fits(data: Path, out: Path) -> None:
+    """(SI) One representative fitted anion band per anion (about 2 mol/kg, first solvent without overlap)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+    from elecgnn.raman import COMPONENTS, _gauss, fit_components, load_spectra, subtract_solvent
+
+    meta, nu, S = load_spectra(data / "oedb-experimental-v2026-05-11.csv")
+    pure = {r.solvent: S[i] for i, r in meta.iterrows() if r.molality == 0}
+    picks = {"FSI": "DMC", "TFSI": "DMC", "PF6": "DMC", "BF4": "AN", "ClO4": "AN", "TfO": "AN"}
+    fig, axes = plt.subplots(2, 3, figsize=(6.7, 4.4))
+    for ax, (anion, solvent) in zip(axes.flat, picks.items(), strict=True):
+        sel = meta[(meta.anion == anion) & (meta.solvent == solvent) & (meta.molality > 0)]
+        if sel.empty or solvent not in pure:
+            ax.set_axis_off()
+            continue
+        i = sel.molality.sub(2.0).abs().idxmin()
+        lo, hi, comps = COMPONENTS[anion]
+        r, _ = subtract_solvent(nu, S[i], pure[solvent], lo, hi)
+        w = (nu >= lo) & (nu <= hi)
+        y = np.clip(r[w], 0, None)
+        fit = fit_components(nu[w], y, comps)
+        scale = y.max()
+        ax.plot(nu[w], y / scale, "k-", lw=1.0, label="Data")
+        total = np.zeros(w.sum())
+        for (name, _, _), col in zip(comps, [GREEN, ORANGE, VERMILION], strict=False):
+            amp = fit[f"area_{name}"] / fit[f"fwhm_{name}"]
+            g = _gauss(nu[w], amp, fit[f"centre_{name}"], fit[f"fwhm_{name}"])
+            total += g
+            ax.fill_between(nu[w], g / scale, color=col, alpha=0.3, lw=0, label=name)
+        ax.plot(nu[w], total / scale, "--", color=BLUE, lw=0.8, label="Fit")
+        ax.set_title(f"Li{_anion_label(anion)} in {solvent}")
+        ax.text(0.03, 0.96, f"{meta.molality[i]:g} mol kg$^{{-1}}$\nf$_{{coord}}$ = {fit['f_bound']:.2f}",
+                transform=ax.transAxes, va="top", fontsize=5.5)  # fmt: skip
+        ax.set(xlabel="Raman shift (cm$^{-1}$)", yticks=[])
+        # the TfO band fills the upper right, and the upper left holds the concentration note
+        ax.legend(loc="center left" if anion == "TfO" else "upper right", fontsize=5)
+    save(fig, out, "fig_si_raman_fits")
 
 
 # ── Composite figures for the main text (Results and Discussion order) ──────────────────────────
@@ -968,26 +1009,26 @@ def _letters(axes) -> None:
 
 def figure1_data(results: Path, data: Path, out: Path, schematic: Path | None = None) -> None:
     """Fig. 1  Study overview (schematic, drawn separately) with chemical coverage and MD consistency."""
-    fig = plt.figure(figsize=(6.7, 6.3))
-    outer = fig.add_gridspec(2, 1, height_ratios=[2.7, 3.2], hspace=0.18)
-    top = fig.add_subplot(outer[0])
+    fig = plt.figure(figsize=(6.7, 6.9))
+    top = fig.add_subplot(fig.add_gridspec(1, 1, left=0.0, right=1.0, top=0.975, bottom=0.535)[0])
     top.axis("off")
-    if schematic is not None and Path(schematic).exists():
+    if schematic is not None and not Path(schematic).exists():
+        raise FileNotFoundError(2, "schematic image not found", str(schematic))
+    if schematic is not None:
         top.imshow(plt.imread(schematic), interpolation="lanczos")
     else:
+        print("WARNING: Figure 1a drawn without the schematic (pass --schematic path/to/Figure1a.png)")
         top.add_patch(plt.Rectangle((0, 0), 1, 1, transform=top.transAxes, fill=False, ls="--", lw=0.75,
                                     edgecolor=GREY))  # fmt: skip
-        top.text(0.5, 0.5, "Schematic (PowerPoint) — pass --schematic Figure1a.png", ha="center", va="center",
-                 transform=top.transAxes, color=GREY)  # fmt: skip
-    low = outer[1].subgridspec(1, 2, wspace=0.55, width_ratios=[1.05, 1])
+        top.text(0.5, 0.5, "Schematic (PowerPoint) \u2014 pass --schematic Figure1a.png", ha="center",
+                 va="center", transform=top.transAxes, color=GREY)  # fmt: skip
+    low = fig.add_gridspec(1, 2, left=0.235, right=0.985, top=0.47, bottom=0.075, wspace=0.42,
+                           width_ratios=[0.85, 1.2])  # fmt: skip
     b, c = fig.add_subplot(low[0, 0]), fig.add_subplot(low[0, 1])
     fig_coverage_matrix(data, out, ax=b)
     fig_consistency(data, out, ax=c)
     _letters_from([b, c], "bc")
-    fig.canvas.draw()  # align (a) with the left edge used by (b)
-    lab_x = b.get_window_extent().x0 - 24 / 72 * fig.dpi
-    x_fig = fig.transFigure.inverted().transform((max(lab_x, 0), 0))[0]
-    fig.text(x_fig, top.get_position().y1, "(a)", fontsize=8, fontweight="bold", va="bottom")
+    fig.text(0.005, 0.985, "(a)", fontsize=8, fontweight="bold", va="top")
     save(fig, out, "Figure1_overview_and_coverage")
 
 
@@ -1014,10 +1055,10 @@ def figure2_extrapolation(results: Path, data: Path, out: Path) -> None:
 
 def figure3_information(results: Path, data: Path, out: Path) -> None:
     """Fig. 3  Physical descriptors restore extrapolation; external MD and pretraining do not."""
-    fig = plt.figure(figsize=(6.7, 8.0))
-    outer = fig.add_gridspec(2, 1, height_ratios=[1, 2.4], hspace=0.28)
+    fig = plt.figure(figsize=(6.7, 7.3))
+    outer = fig.add_gridspec(2, 1, height_ratios=[1, 2.3], hspace=0.2)
     a = fig.add_subplot(outer[0])
-    low = outer[1].subgridspec(2, 2, wspace=0.55, hspace=1.0)
+    low = outer[1].subgridspec(2, 2, wspace=0.55, hspace=0.82)
     b, c = fig.add_subplot(low[0, 0]), fig.add_subplot(low[0, 1])
     d, e = fig.add_subplot(low[1, 0]), fig.add_subplot(low[1, 1])
     fig_graph_vs_descriptors(results, out, ax=a)
@@ -1043,8 +1084,8 @@ def figure4_benchmarking(results: Path, data: Path, out: Path) -> None:
 
 def figure5_reliability(results: Path, data: Path, out: Path) -> None:
     """Fig. 5  Interpretation, screening value and when to trust a prediction."""
-    fig = plt.figure(figsize=(6.7, 5.8))
-    gs = fig.add_gridspec(2, 2, wspace=0.55, hspace=0.85)
+    fig = plt.figure(figsize=(6.7, 5.2))
+    gs = fig.add_gridspec(2, 2, wspace=0.4, hspace=0.62)
     a, b, c, d = (fig.add_subplot(gs[i // 2, i % 2]) for i in range(4))
     fig_attention(results, out, ax=a)
     fig_screening(results, out, ax=b)
@@ -1055,7 +1096,7 @@ def figure5_reliability(results: Path, data: Path, out: Path) -> None:
 
 def figure6_embeddings(results: Path, data: Path, out: Path) -> None:
     """Fig. 6  Learned embeddings against a random-weight control."""
-    fig = plt.figure(figsize=(6.7, 5.4))
+    fig = plt.figure(figsize=(6.7, 5.0))
     axes, side = _tsne_layout(fig)
     fig_tsne_control(results, out, axes=axes, side=side)
     _letters(axes.flatten())
@@ -1103,6 +1144,7 @@ def main() -> None:
         ("Raman example", lambda: fig_raman_example(a.data, a.out)),
         ("Raman vs MD", lambda: fig_raman_md(a.results, a.out)),
         ("Raman vs predictor", lambda: fig_raman_predictor(a.results, a.out)),
+        ("SI Raman fits", lambda: fig_si_raman_fits(a.data, a.out)),
     ]
     for name, fn in panels:
         try:
