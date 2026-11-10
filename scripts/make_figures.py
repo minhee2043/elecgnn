@@ -341,7 +341,14 @@ def fig_oedb_features(results: Path, out: Path, ax=None) -> None:
     ax.axhline(0, color="k", lw=0.6)
     ax.set_xticks(range(len(sets)), set_labels, rotation=25, ha="right", rotation_mode="anchor")
     ax.set(ylabel="\u0394 log$_{10}$ MAE vs no features", xlabel="OEDB-derived feature set")
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.4), ncol=2, columnspacing=0.8)
+    ax.legend(
+        loc="lower right",
+        bbox_to_anchor=(1.0, 1.02),
+        borderaxespad=0,
+        handletextpad=0.3,
+        columnspacing=0.8,
+        ncol=2,
+    )
     if own:
         save(fig, out, "fig_oedb_features")
 
@@ -446,7 +453,14 @@ def fig_pretraining_targets(results: Path, out: Path, ax=None) -> None:
     ticks = ["Dipole\n(raw)", "HOMO", "LUMO", "Gap", "Dipole\n(scaled)", "All\nfour"]
     ax.set_xticks(range(len(arms)), ticks)
     ax.set(ylabel="\u0394 log$_{10}$ MAE vs no pretraining", xlabel="Molecular pretraining target")
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.33), ncol=2, columnspacing=0.8)
+    ax.legend(
+        loc="lower right",
+        bbox_to_anchor=(1.0, 1.02),
+        borderaxespad=0,
+        handletextpad=0.3,
+        columnspacing=0.8,
+        ncol=2,
+    )
     if own:
         save(fig, out, "fig_pretraining_targets")
 
@@ -572,6 +586,7 @@ def fig_screening(results: Path, out: Path, top: float = 0.10, ax=None) -> None:
     runs = [("GAT", "class_seeds/gat_none", BLUE), ("GCN", "class_seeds/gcn_none", ORANGE),
             ("LightGBM descriptors", "descriptors/fold_class/LGBM_molar", GREEN),
             ("GAT + descriptors", "hybrid/fold_class/gat_desc_molar", PURPLE)]  # fmt: skip
+    short = {"LightGBM descriptors": "LightGBM", "GAT + descriptors": "GAT + desc."}
     fig, ax, own = _canvas(ax, SINGLE)
     fr = np.linspace(0.01, 0.5, 50)
     rows = []
@@ -583,12 +598,14 @@ def fig_screening(results: Path, out: Path, top: float = 0.10, ax=None) -> None:
         rec = [len(truth & set(order[: max(1, int(round(f * len(g))))])) / n_top for f in fr]
         ef = len(truth & set(order[:n_top])) / n_top / top
         rows.append({"model": label, "recall_at_10pct": ef * top, "enrichment_at_10pct": ef})
-        ax.plot(fr * 100, rec, color=color, label=f"{label} (EF$_{{10\\%}}$ {ef:.1f})")
-    ax.plot(fr * 100, fr, "k--", lw=0.6, label="Random selection")
+        ax.plot(fr * 100, rec, color=color, label=f"{short.get(label, label)} ({ef:.1f})")
+    ax.plot(fr * 100, fr, "k--", lw=0.6, label="Random (1.0)")
     pd.DataFrame(rows).to_csv(out / "fig_screening_data.csv", index=False)
     ax.set(xlabel="Candidates selected (% of compositions)", ylabel="Recall of true top-10% conductors",
            xlim=(0, 50), ylim=(0, 1.02))  # fmt: skip
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.2), ncol=2, columnspacing=0.8)
+    ax.legend(loc="lower right", bbox_to_anchor=(1.0, 1.02), borderaxespad=0, ncol=3, handlelength=1.4,
+              handletextpad=0.3, columnspacing=0.7, title="EF$_{10\\%}$ in parentheses",
+              title_fontsize=5.5)  # fmt: skip
     if own:
         save(fig, out, "fig_screening")
 
@@ -905,13 +922,15 @@ def fig_raman_md(results: Path, out: Path, ax=None) -> None:
     # TFSI and PF6 shift too little on coordination to resolve; they are reported in the SI only
     df = df[df.anion.isin(["FSI", "BF4", "ClO4"])]
     fig, ax, own = _canvas(ax, SINGLE)
-    for a, g in df.groupby("anion"):
+    for a in ["FSI", "BF4", "ClO4"]:
+        g = df[df.anion == a]
         rho = spearmanr(g.CN_anion_MD, g.f_bound)[0]
         ax.scatter(g.CN_anion_MD, g.f_bound, s=7, color=ANION_COLORS.get(a, "k"), linewidths=0,
-                   label=f"{_anion_label(a)} (\u03c1 = {rho:.2f})")  # fmt: skip
+                   label=f"{_anion_label(a)} ({rho:.2f})")  # fmt: skip
     ax.set(xlabel="MD coordination, Li$^+$ \u2190 anion", ylabel="Raman coordinated-anion fraction",
            ylim=(0, 1.02))  # fmt: skip
-    _inner_legend(ax, loc="lower right")
+    ax.legend(loc="lower right", bbox_to_anchor=(1.0, 1.02), borderaxespad=0, handletextpad=0.1,
+              columnspacing=0.6, ncol=2, markerscale=1.3)  # fmt: skip
     if own:
         save(fig, out, "fig_raman_md")
 
@@ -928,9 +947,9 @@ def fig_raman_predictor(results: Path, out: Path, ax=None) -> None:
         raise FileNotFoundError(2, "no predictor results (run elecgnn raman --predict)",
                                 str(results / "raman"))  # fmt: skip
     inside, outside = "solvents in OEDB MD", "solvents absent from OEDB MD"
-    arms = [("MD (linked OEDB compositions)", None, "MD, OEDB compositions", GREY),
-            (f"OEDB predictor, {inside}", f"Molality only, {inside}", "Predictor, OEDB solvents", BLUE),
-            (f"OEDB predictor, {outside}", f"Molality only, {outside}", "Predictor, solvents outside OEDB",
+    arms = [("MD (linked OEDB compositions)", None, "MD,\nOEDB compositions", GREY),
+            (f"OEDB predictor, {inside}", f"Molality only, {inside}", "Predictor,\nOEDB solvents", BLUE),
+            (f"OEDB predictor, {outside}", f"Molality only, {outside}", "Predictor,\nsolvents outside OEDB",
              VERMILION)]  # fmt: skip
     anions = [a for a in ["FSI", "BF4", "ClO4", "TfO"] if a in set(s.anion)]
     fig, ax, own = _canvas(ax, SINGLE)
@@ -942,19 +961,21 @@ def fig_raman_predictor(results: Path, out: Path, ax=None) -> None:
         if base is not None and s.comparison.eq(base).any():
             b = [s[(s.anion == a) & (s.comparison == base)].spearman.mean() for a in anions]
             ax.scatter(x, b, marker="D", s=10, c="k", zorder=3,
-                       label="Concentration only" if k == 1 else None)  # fmt: skip
+                       label="Concentration\nonly" if k == 1 else None)  # fmt: skip
     ax.axhline(0, color="k", lw=0.6)
     ax.set_xticks(range(len(anions)), [_anion_label(a) for a in anions])
     ax.set(ylabel="Spearman \u03c1 with Raman coordinated fraction", ylim=(min(-0.45, ax.get_ylim()[0]), 1))
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.15), ncol=2, columnspacing=0.8)
+    ax.legend(
+        loc="center left", bbox_to_anchor=(1.03, 0.5), borderaxespad=0, handletextpad=0.4, labelspacing=0.9
+    )
     if own:
         save(fig, out, "fig_raman_predictor")
 
 
 def figure7_raman(results: Path, data: Path, out: Path) -> None:
     """Fig. 7  Experimental Raman check of MD solvation structure and of OEDB-based predictions."""
-    fig = plt.figure(figsize=(6.7, 2.55))
-    gs = fig.add_gridspec(1, 3, left=0.07, right=0.995, wspace=0.42, width_ratios=[1, 1.05, 1.15])
+    fig = plt.figure(figsize=(6.7, 2.7))
+    gs = fig.add_gridspec(1, 3, left=0.07, right=0.82, top=0.84, wspace=0.42, width_ratios=[1, 1.05, 1.0])
     a, b, c = (fig.add_subplot(gs[0, i]) for i in range(3))
     fig_raman_example(data, out, ax=a)
     fig_raman_md(results, out, ax=b)
@@ -1056,9 +1077,9 @@ def figure2_extrapolation(results: Path, data: Path, out: Path) -> None:
 def figure3_information(results: Path, data: Path, out: Path) -> None:
     """Fig. 3  Physical descriptors restore extrapolation; external MD and pretraining do not."""
     fig = plt.figure(figsize=(6.7, 7.3))
-    outer = fig.add_gridspec(2, 1, height_ratios=[1, 2.3], hspace=0.2)
+    outer = fig.add_gridspec(2, 1, height_ratios=[1, 2.3], hspace=0.34)
     a = fig.add_subplot(outer[0])
-    low = outer[1].subgridspec(2, 2, wspace=0.55, hspace=0.82)
+    low = outer[1].subgridspec(2, 2, wspace=0.55, hspace=0.55)
     b, c = fig.add_subplot(low[0, 0]), fig.add_subplot(low[0, 1])
     d, e = fig.add_subplot(low[1, 0]), fig.add_subplot(low[1, 1])
     fig_graph_vs_descriptors(results, out, ax=a)
@@ -1085,7 +1106,7 @@ def figure4_benchmarking(results: Path, data: Path, out: Path) -> None:
 def figure5_reliability(results: Path, data: Path, out: Path) -> None:
     """Fig. 5  Interpretation, screening value and when to trust a prediction."""
     fig = plt.figure(figsize=(6.7, 5.2))
-    gs = fig.add_gridspec(2, 2, wspace=0.4, hspace=0.62)
+    gs = fig.add_gridspec(2, 2, wspace=0.4, hspace=0.42, top=0.9)
     a, b, c, d = (fig.add_subplot(gs[i // 2, i % 2]) for i in range(4))
     fig_attention(results, out, ax=a)
     fig_screening(results, out, ax=b)
