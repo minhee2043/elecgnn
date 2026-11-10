@@ -930,7 +930,7 @@ def fig_raman_md(results: Path, out: Path, ax=None) -> None:
     ax.set(xlabel="MD coordination, Li$^+$ \u2190 anion", ylabel="Raman coordinated-anion fraction",
            ylim=(0, 1.02))  # fmt: skip
     ax.legend(loc="lower right", bbox_to_anchor=(1.0, 1.02), borderaxespad=0, handletextpad=0.1,
-              columnspacing=0.6, ncol=2, markerscale=1.3)  # fmt: skip
+              columnspacing=0.6, ncol=3, markerscale=1.3)  # fmt: skip
     if own:
         save(fig, out, "fig_raman_md")
 
@@ -947,9 +947,9 @@ def fig_raman_predictor(results: Path, out: Path, ax=None) -> None:
         raise FileNotFoundError(2, "no predictor results (run elecgnn raman --predict)",
                                 str(results / "raman"))  # fmt: skip
     inside, outside = "solvents in OEDB MD", "solvents absent from OEDB MD"
-    arms = [("MD (linked OEDB compositions)", None, "MD,\nOEDB compositions", GREY),
-            (f"OEDB predictor, {inside}", f"Molality only, {inside}", "Predictor,\nOEDB solvents", BLUE),
-            (f"OEDB predictor, {outside}", f"Molality only, {outside}", "Predictor,\nsolvents outside OEDB",
+    arms = [("MD (linked OEDB compositions)", None, "MD, OEDB", GREY),
+            (f"OEDB predictor, {inside}", f"Molality only, {inside}", "Predictor, in OEDB", BLUE),
+            (f"OEDB predictor, {outside}", f"Molality only, {outside}", "Predictor, outside OEDB",
              VERMILION)]  # fmt: skip
     anions = [a for a in ["FSI", "BF4", "ClO4", "TfO"] if a in set(s.anion)]
     fig, ax, own = _canvas(ax, SINGLE)
@@ -961,21 +961,24 @@ def fig_raman_predictor(results: Path, out: Path, ax=None) -> None:
         if base is not None and s.comparison.eq(base).any():
             b = [s[(s.anion == a) & (s.comparison == base)].spearman.mean() for a in anions]
             ax.scatter(x, b, marker="D", s=10, c="k", zorder=3,
-                       label="Concentration\nonly" if k == 1 else None)  # fmt: skip
+                       label="Conc. only" if k == 1 else None)  # fmt: skip
     ax.axhline(0, color="k", lw=0.6)
     ax.set_xticks(range(len(anions)), [_anion_label(a) for a in anions])
     ax.set(ylabel="Spearman \u03c1 with Raman coordinated fraction", ylim=(min(-0.45, ax.get_ylim()[0]), 1))
-    ax.legend(
-        loc="center left", bbox_to_anchor=(1.03, 0.5), borderaxespad=0, handletextpad=0.4, labelspacing=0.9
-    )
+    handles, labels = ax.get_legend_handles_labels()
+    keys = ["MD, OEDB", "Conc. only", "Predictor, in OEDB", "Predictor, outside OEDB"]
+    order = [labels.index(k) for k in keys]
+    ax.legend([handles[i] for i in order], [labels[i] for i in order], loc="lower right",
+              bbox_to_anchor=(1.0, 1.02), borderaxespad=0, ncol=2, handletextpad=0.3, columnspacing=0.6,
+              handlelength=1.2)  # fmt: skip
     if own:
         save(fig, out, "fig_raman_predictor")
 
 
 def figure7_raman(results: Path, data: Path, out: Path) -> None:
     """Fig. 7  Experimental Raman check of MD solvation structure and of OEDB-based predictions."""
-    fig = plt.figure(figsize=(6.7, 2.7))
-    gs = fig.add_gridspec(1, 3, left=0.07, right=0.82, top=0.84, wspace=0.42, width_ratios=[1, 1.05, 1.0])
+    fig = plt.figure(figsize=(6.7, 2.75))
+    gs = fig.add_gridspec(1, 3, left=0.07, right=0.995, top=0.83, wspace=0.36, width_ratios=[1, 1.12, 1.05])
     a, b, c = (fig.add_subplot(gs[0, i]) for i in range(3))
     fig_raman_example(data, out, ax=a)
     fig_raman_md(results, out, ax=b)
@@ -1048,6 +1051,16 @@ def figure1_data(results: Path, data: Path, out: Path, schematic: Path | None = 
     b, c = fig.add_subplot(low[0, 0]), fig.add_subplot(low[0, 1])
     fig_coverage_matrix(data, out, ax=b)
     fig_consistency(data, out, ax=c)
+    b.set_xticks(b.get_xticks(), ["In-house\nMD", "OEDB", "Experimental\nCE"])
+    for ax in (b, c):  # panels (b) and (c) are read at full page width, so use larger text
+        ax.tick_params(labelsize=8.5)
+        ax.xaxis.label.set_size(9)
+        ax.yaxis.label.set_size(9)
+        for t in ax.texts:
+            t.set_fontsize(8.5)
+        if ax.get_legend() is not None:
+            for t in ax.get_legend().get_texts():
+                t.set_fontsize(8)
     _letters_from([b, c], "bc")
     fig.text(0.005, 0.985, "(a)", fontsize=8, fontweight="bold", va="top")
     save(fig, out, "Figure1_overview_and_coverage")
