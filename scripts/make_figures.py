@@ -604,8 +604,7 @@ def fig_screening(results: Path, out: Path, top: float = 0.10, ax=None) -> None:
     ax.set(xlabel="Candidates selected (% of compositions)", ylabel="Recall of true top-10% conductors",
            xlim=(0, 50), ylim=(0, 1.02))  # fmt: skip
     ax.legend(loc="lower right", bbox_to_anchor=(1.0, 1.02), borderaxespad=0, ncol=3, handlelength=1.4,
-              handletextpad=0.3, columnspacing=0.7, title="EF$_{10\\%}$ in parentheses",
-              title_fontsize=5.5)  # fmt: skip
+              handletextpad=0.3, columnspacing=0.7)  # fmt: skip
     if own:
         save(fig, out, "fig_screening")
 
@@ -660,8 +659,8 @@ def fig_tsne_control(results: Path, out: Path, axes=None, side=None) -> None:
             ax.text(0.03, 0.97, f"k-NN R$^2$ = {sc[key]:.2f}", transform=ax.transAxes, va="top", fontsize=6.5)
         if colour_by == "class" and "solvent_class" in emb:
             handles, labels = axes[i, 1].get_legend_handles_labels()
-            side[i].legend(handles, labels, loc="center left", fontsize=5.5, title="Solvent class",
-                           title_fontsize=6, handletextpad=0.2, borderaxespad=0)  # fmt: skip
+            side[i].legend(handles, labels, loc="center left", fontsize=6.5, title="Solvent class",
+                           title_fontsize=7, handletextpad=0.2, borderaxespad=0)  # fmt: skip
         else:
             cax = side[i].inset_axes([0.0, 0.08, 0.09, 0.84])
             fig.colorbar(h, cax=cax, label=colour_by)
@@ -1106,7 +1105,7 @@ def figure3_information(results: Path, data: Path, out: Path) -> None:
 def figure4_benchmarking(results: Path, data: Path, out: Path) -> None:
     """Fig. 4  Benchmarking practice: early stopping, seeds, architecture per class, external CE test."""
     fig = plt.figure(figsize=(6.7, 5.0))
-    gs = fig.add_gridspec(2, 2, wspace=0.7, hspace=0.45)
+    gs = fig.add_gridspec(2, 2, wspace=0.6, hspace=0.38)
     a, b, c, d = (fig.add_subplot(gs[i // 2, i % 2]) for i in range(4))
     fig_early_stopping(results, out, ax=a)
     fig_seed_variance(results, out, ax=b)
@@ -1119,7 +1118,7 @@ def figure4_benchmarking(results: Path, data: Path, out: Path) -> None:
 def figure5_reliability(results: Path, data: Path, out: Path) -> None:
     """Fig. 5  Interpretation, screening value and when to trust a prediction."""
     fig = plt.figure(figsize=(6.7, 5.2))
-    gs = fig.add_gridspec(2, 2, wspace=0.4, hspace=0.42, top=0.9)
+    gs = fig.add_gridspec(2, 2, wspace=0.34, hspace=0.36, top=0.92)
     a, b, c, d = (fig.add_subplot(gs[i // 2, i % 2]) for i in range(4))
     fig_attention(results, out, ax=a)
     fig_screening(results, out, ax=b)
