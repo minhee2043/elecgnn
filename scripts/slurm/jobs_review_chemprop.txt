@@ -1,0 +1,8 @@
+# Issue 5: Chemprop (D-MPNN) baseline. Runs in its own conda environment (see scripts/chemprop_baseline.py):
+#   export ELECGNN_ENV=/path/to/envs/chemprop
+#   sbatch -p gpupart --gres=gpu:a100:1 --array=1-5%5 scripts/slurm/array_job.sbatch scripts/slurm/jobs_review_chemprop.txt
+python scripts/chemprop_baseline.py --fold-col fold_ethers --test-folds 0 --seeds 0 1 2 3 4 5 6 7 8 9 --out results/review/chemprop/fold_ethers
+python scripts/chemprop_baseline.py --fold-col fold_carbonates --test-folds 0 --seeds 0 1 2 3 4 5 6 7 8 9 --out results/review/chemprop/fold_carbonates
+python scripts/chemprop_baseline.py --fold-col fold_solvent --out results/review/chemprop/fold_solvent
+python scripts/chemprop_baseline.py --fold-col fold_class --out results/review/chemprop/fold_class
+python scripts/chemprop_baseline.py --fold-col fold_random_s0 --out results/review/chemprop/fold_random_s0

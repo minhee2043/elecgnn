@@ -37,19 +37,25 @@ def main() -> None:
         subset=[*FEATURES, "LCE"]
     )
     test = pd.read_csv(a.test).merge(TABLE_S2, on="kim_no")
+    a.out.parent.mkdir(parents=True, exist_ok=True)
 
     def rmse(p):
         return float(np.sqrt(np.mean((p - test["LCE"]) ** 2)))
 
     lin = LinearRegression().fit(train[FEATURES], train["LCE"])
-    rf = []
+    rf, rf_pred = [], []
     for seed in range(10):
         model = RandomForestRegressor(300, random_state=seed).fit(train[FEATURES], train["LCE"])
-        rf.append(rmse(model.predict(test[FEATURES])))
+        rf_pred.append(model.predict(test[FEATURES]))
+        rf.append(rmse(rf_pred[-1]))
+    # per-electrolyte predictions, used for bootstrap confidence intervals
+    preds = pd.DataFrame({"kim_no": test["kim_no"], "LCE": test["LCE"],
+                          "linear_refit": lin.predict(test[FEATURES]), "rf_refit": np.mean(rf_pred, axis=0),
+                          "kim_published": test["kim_pred_LCE"]})  # fmt: skip
+    preds.to_csv(a.out.with_name("kim_baseline_predictions.csv"), index=False)
     out = {"RMSE": rmse(lin.predict(test[FEATURES])), "n_train": len(train),
            "rf_RMSE_mean": float(np.mean(rf)), "rf_RMSE_sd": float(np.std(rf, ddof=1)),
            "kim_published_RMSE": rmse(test["kim_pred_LCE"])}  # fmt: skip
-    a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(out, indent=2))
     print(json.dumps(out, indent=2))
 

@@ -89,6 +89,7 @@ Main `train` options:
 | `--pooling` | `mean`, `sum` | `mean` |
 | `--atom-features` | `standard` (26 features), `extended` (+ degree, attached H, formal charge, ring size) | `standard` |
 | `--seeds` | initialization seeds | `0 1 2` |
+| `--hidden`, `--layers`, `--head-hidden`, `--dropout`, `--lr` | model size and training settings | `64`, `4`, `128`, `0.2`, `1e-3` |
 | `--save-models` | keep trained models for `elecgnn interpret` | off |
 
 ## Scripts
@@ -104,6 +105,11 @@ Main `train` options:
 | `run_oedb_features.sh`, `run_scalar_ablation.sh` | Feature and scalar-input studies |
 | `make_figures.py` | All figures of the article and SI, regenerated from `results/` |
 | `migrate_legacy_names.py` | Update files written by earlier versions of this code |
+| `add_family_fold.py` | Add a family hold-out column (for example all carbonates) to the fold file |
+| `make_subset.py` | Copy of the unified data without some solvent classes, for nested model selection |
+| `chemprop_baseline.py` | Chemprop (D-MPNN) baseline on the shared folds, in the elecgnn run format |
+| `external_ce_bootstrap.py` | Bootstrap confidence intervals for the external CE comparison |
+| `md_conductivity_uncertainty.py` | Block-averaged Einstein conductivity and its statistical error from a GROMACS trajectory |
 
 ## Reproducing the article
 

@@ -43,6 +43,8 @@ from elecgnn.descriptors import build_features
 from elecgnn.metrics import regression_metrics
 from elecgnn.train import splits_from_column
 
+EXPERIMENTAL = ["MP", "BP", "Dielec"]  # measured bulk properties; everything else is DFT or structure-derived
+
 log = logging.getLogger("descriptors")
 
 MODEL_NAMES = ("RFR", "ADR", "XGBR", "LGBM", "SVR", "RDG", "LSO", "GPR", "MLP")
@@ -118,11 +120,19 @@ def main() -> None:
         "--models", nargs="+", default=["RFR", "ADR", "XGBR", "LGBM", "SVR", "RDG", "LSO", "GPR", "MLP"]
     )
     ap.add_argument("--weighting", nargs="+", default=["none", "molar"], choices=["none", "molar"])
+    ap.add_argument(
+        "--computed-only",
+        action="store_true",
+        help="drop the measured bulk properties (melting point, boiling point, dielectric constant)",
+    )
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
     ap.add_argument("--shap", action="store_true", help="mean |SHAP| per feature for LGBM")
     ap.add_argument("--out", type=Path, help="default: results/descriptors/<fold-col>")
     a = ap.parse_args()
-    out_root = a.out or Path("results/descriptors") / a.fold_col
+    out_root = (
+        a.out
+        or Path("results/descriptors_computed" if a.computed_only else "results/descriptors") / a.fold_col
+    )
 
     df = pd.read_csv(a.data)
     folds = pd.read_csv(a.folds).set_index("row_id")[a.fold_col].reindex(df["name"].astype(str))
@@ -135,6 +145,8 @@ def main() -> None:
 
     for weighting in a.weighting:
         X = build_features(df, weighting)
+        if a.computed_only:  # descriptors available for any new molecule without experiments
+            X = X.drop(columns=[c for c in X.columns if c in EXPERIMENTAL], errors="ignore")
         for name in a.models:
             out = out_root / f"{name}_{weighting}"
             out.mkdir(parents=True, exist_ok=True)

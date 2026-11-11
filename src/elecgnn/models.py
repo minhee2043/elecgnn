@@ -63,27 +63,30 @@ class GCNEncoder(nn.Module):
         return self.out_layer(x, edge_index)
 
 
-def make_encoder(kind: str, hidden: int, in_dim: int = NODE_DIM) -> nn.Module:
+def make_encoder(kind: str, hidden: int, in_dim: int = NODE_DIM, num_layers: int = 4) -> nn.Module:
     if kind == "gat":
-        return GATEncoder(hidden, in_dim=in_dim)
+        return GATEncoder(hidden, num_layers=num_layers, in_dim=in_dim)
     if kind == "gcn":
-        return GCNEncoder(hidden, in_dim=in_dim)
+        return GCNEncoder(hidden, num_layers=num_layers, in_dim=in_dim)
     raise ValueError(f"unknown encoder: {kind}")
 
 
 class MixtureModel(nn.Module):
     def __init__(self, kind: str, n_slots: int, hidden1: int = 64, hidden2: int = 128,
                  scalar_dim: int = 0, n_out: int = 1, share_encoder: bool = False,
-                 n_extra: int = 0, pooling: str = "mean", node_dim: int = NODE_DIM) -> None:  # fmt: skip
+                 n_extra: int = 0, pooling: str = "mean", node_dim: int = NODE_DIM,
+                 num_layers: int = 4, dropout: float = 0.2) -> None:  # fmt: skip
         super().__init__()
         if pooling not in ("mean", "sum"):
             raise ValueError(f"unknown pooling: {pooling}")
         self.kind, self.n_slots, self.share_encoder, self.pooling = kind, n_slots, share_encoder, pooling
         n_enc = 1 if share_encoder else n_slots
-        self.encoders = nn.ModuleList([make_encoder(kind, hidden1, node_dim) for _ in range(n_enc)])
+        self.encoders = nn.ModuleList(
+            [make_encoder(kind, hidden1, node_dim, num_layers) for _ in range(n_enc)]
+        )
         d_in = hidden1 * n_slots + n_slots + scalar_dim * n_slots + n_extra
         self.head = nn.Sequential(
-            nn.Linear(d_in, hidden2), nn.LayerNorm(hidden2), nn.ReLU(), nn.Dropout(0.2),
+            nn.Linear(d_in, hidden2), nn.LayerNorm(hidden2), nn.ReLU(), nn.Dropout(dropout),
             nn.Linear(hidden2, hidden2 // 2), nn.ReLU(), nn.Linear(hidden2 // 2, n_out),
         )  # fmt: skip
         self.head.apply(_xavier)

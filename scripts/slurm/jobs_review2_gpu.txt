@@ -1,0 +1,14 @@
+# Second review round, GPU.
+#   python scripts/make_subset.py --exclude-classes "Ether" "Fluorinated ether" --out data/unified_md_noethers.csv
+#   sbatch -p gpupart --gres=gpu:a100:1 --array=1-9%6 scripts/slurm/array_job.sbatch scripts/slurm/jobs_review2_gpu.txt
+# Issue 3, nested selection: choose GAT hyperparameters by leave-solvent-out CV on data WITHOUT any ether-type solvent
+elecgnn train --task ioncon --data data/unified_md_noethers.csv --split group-solvent --seeds 0 1 2 --model gat --out results/review/hparam_select/default
+elecgnn train --task ioncon --data data/unified_md_noethers.csv --split group-solvent --seeds 0 1 2 --model gat --hidden 32 --out results/review/hparam_select/hidden32
+elecgnn train --task ioncon --data data/unified_md_noethers.csv --split group-solvent --seeds 0 1 2 --model gat --hidden 128 --out results/review/hparam_select/hidden128
+elecgnn train --task ioncon --data data/unified_md_noethers.csv --split group-solvent --seeds 0 1 2 --model gat --layers 2 --out results/review/hparam_select/layers2
+elecgnn train --task ioncon --data data/unified_md_noethers.csv --split group-solvent --seeds 0 1 2 --model gat --layers 6 --out results/review/hparam_select/layers6
+elecgnn train --task ioncon --data data/unified_md_noethers.csv --split group-solvent --seeds 0 1 2 --model gat --dropout 0.0 --out results/review/hparam_select/dropout0.0
+elecgnn train --task ioncon --data data/unified_md_noethers.csv --split group-solvent --seeds 0 1 2 --model gat --dropout 0.4 --out results/review/hparam_select/dropout0.4
+elecgnn train --task ioncon --data data/unified_md_noethers.csv --split group-solvent --seeds 0 1 2 --model gat --lr 3e-4 --out results/review/hparam_select/lr3e-4
+# Issue 2, symmetric contrast: all OEDB-derived features with all ethers held out, ten seeds (carbonates already done)
+elecgnn train --task ioncon --data data/unified_md.csv --split file --folds-file data/folds_inhouse.csv --fold-col fold_ethers --test-folds 0 --seeds 0 1 2 3 4 5 6 7 8 9 --model gat --extra-features data/oedb_features/features_ioncon.csv --feature-set all --out results/review/ethers_gat_all

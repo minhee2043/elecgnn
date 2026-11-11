@@ -86,6 +86,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     t.add_argument("--add-back", type=float, default=0.0,
                    help="learning curve: move this fraction of each test fold into training")  # fmt: skip
+    t.add_argument("--hidden", type=int, default=64, help="encoder channels (per head for GAT)")
+    t.add_argument("--head-hidden", type=int, default=128, help="width of the first prediction-head layer")
+    t.add_argument("--layers", type=int, default=4, help="message-passing layers before the output layer")
+    t.add_argument("--dropout", type=float, default=0.2, help="dropout in the prediction head")
+    t.add_argument("--lr", type=float, default=1e-3, help="learning rate")
     t.add_argument("--epochs", type=int, default=5000)
     t.add_argument("--patience", type=int, default=500)
     t.add_argument("--batch-size", type=int, default=128)
@@ -233,16 +238,18 @@ def cmd_train(args) -> None:
         raise SystemExit("--atom-features extended cannot reuse pretrained encoders (different input size)")
     args.out.mkdir(parents=True, exist_ok=True)
     cfg = TrainConfig(epochs=args.epochs, patience=args.patience, batch_size=args.batch_size,
-                      early_stop=args.early_stop, device=args.device)  # fmt: skip
+                      early_stop=args.early_stop, device=args.device, lr=args.lr)  # fmt: skip
     table = _load_table(args)
     splits, holdout = _splits(args, table)
     transform = args.transform or ("log10" if args.task == "ioncon" else "identity")
     if args.task == "oedb" and args.split not in ("group-solvent", "repeated"):
         raise SystemExit("--task oedb supports --split group-solvent or repeated")
     state = _encoder_state(args, cfg, args.out)
-    make_model = partial(MixtureModel, args.model, table.n_slots, scalar_dim=table.scalar_dim,
-                         share_encoder=args.share_encoder, n_extra=table.n_extra, pooling=args.pooling,
-                         node_dim=node_dim(extended))  # fmt: skip
+    make_model = partial(MixtureModel, args.model, table.n_slots, hidden1=args.hidden,
+                         hidden2=args.head_hidden, scalar_dim=table.scalar_dim,
+                         share_encoder=args.share_encoder, n_extra=table.n_extra,
+                         pooling=args.pooling, node_dim=node_dim(extended), num_layers=args.layers,
+                         dropout=args.dropout)  # fmt: skip
     cache = GraphCache(extended=extended)
     res = run_cv(table, splits, make_model, cfg, args.seeds, transform, state, holdout, cache,
                  train_frac=args.train_frac, add_back=args.add_back,
@@ -360,9 +367,12 @@ def cmd_interpret(args) -> None:
     slot_names = ["solvent", "anion"] if ra.task == "ioncon" else [f"c{j + 1}" for j in range(table.n_slots)]
 
     def build() -> MixtureModel:
-        return MixtureModel(ra.model, table.n_slots, scalar_dim=table.scalar_dim,
+        return MixtureModel(ra.model, table.n_slots, hidden1=getattr(ra, "hidden", 64),
+                            hidden2=getattr(ra, "head_hidden", 128), scalar_dim=table.scalar_dim,
                             share_encoder=ra.share_encoder, n_extra=table.n_extra,
-                            pooling=getattr(ra, "pooling", "mean"), node_dim=node_dim(extended))  # fmt: skip
+                            pooling=getattr(ra, "pooling", "mean"), node_dim=node_dim(extended),
+                            num_layers=getattr(ra, "layers", 4),
+                            dropout=getattr(ra, "dropout", 0.2))  # fmt: skip
 
     from fnmatch import fnmatch
 

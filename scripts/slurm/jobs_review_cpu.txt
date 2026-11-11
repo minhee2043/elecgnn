@@ -1,0 +1,11 @@
+# Reviewer-driven experiments, CPU.
+#   sbatch -p amdpart --array=1-6 scripts/slurm/cpu_array_job.sbatch scripts/slurm/jobs_review_cpu.txt
+# Issue 1: descriptor models without measured bulk properties (melting point, boiling point, dielectric constant)
+python scripts/descriptor_baselines.py --computed-only --fold-col fold_ethers --test-folds 0 --seeds 0 1 2 3 4 5 6 7 8 9 --shap
+python scripts/descriptor_baselines.py --computed-only --fold-col fold_solvent
+python scripts/descriptor_baselines.py --computed-only --fold-col fold_class
+python scripts/descriptor_baselines.py --computed-only --fold-col fold_random_s0
+# Issue 2: descriptor models on the carbonate hold-out
+python scripts/descriptor_baselines.py --fold-col fold_carbonates --test-folds 0 --seeds 0 1 2 3 4 5 6 7 8 9 --shap
+# Issue 7: refitted Kim baselines with per-electrolyte predictions, then bootstrap intervals
+python scripts/kim_linear_baseline.py --kim-xlsx data/pnas_2214357120_sd01.xlsx --test data/LCE_test13.csv --out results/lce_ext13/linear_kim_features.json && python scripts/external_ce_bootstrap.py --results results --out results/lce_ext13/bootstrap.csv

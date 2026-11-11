@@ -693,10 +693,10 @@ def fig_descriptor_benchmark(results: Path, out: Path, ax=None) -> None:
             )
             labels.append(f"{m} ({w})")
     M = np.array(rows)
-    fig, ax, own = _canvas(ax, (3.3, 4.4))
+    fig, ax, own = _canvas(ax, (3.8, 5.0))
     im = ax.imshow(M, cmap="viridis_r", aspect="auto")
     for (i, j), v in np.ndenumerate(M):
-        ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=5, color="w" if v > M.mean() else "k")
+        ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=7, color="w" if v > M.mean() else "k")
     ax.set_xticks(
         range(len(splits)),
         ["Random", "Leave-solvent-out", "Leave-class-out", "Leave-ethers-out"],
