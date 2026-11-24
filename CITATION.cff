@@ -9,7 +9,7 @@ license: MIT
 repository-code: "https://github.com/minhee2043/elecgnn"
 preferred-citation:
   type: article
-  title: "Coverage, not architecture: what limits machine-learning extrapolation for liquid battery electrolytes"
+  title: "Beyond architecture: chemical coverage and generalization in machine learning for battery electrolytes"
   authors:
     - family-names: "Park"
       given-names: "Minhee"

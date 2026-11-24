@@ -3,8 +3,7 @@
 Graph neural networks, descriptor models and evaluation tools for predicting liquid-electrolyte
 properties from molecular dynamics (MD) and experimental data.
 
-This repository accompanies the article *Coverage, not architecture: what limits
-machine-learning extrapolation for liquid battery electrolytes*. It contains everything needed to reproduce the analyses and figures:
+This repository accompanies the article *Beyond architecture: chemical coverage and generalization in machine learning for battery electrolytes*. It contains everything needed to reproduce the analyses and figures:
 
 - **Models:** GAT (GATv2) and GCN mixture models in which each component's graph embedding is
   weighted by its mole fraction; nine descriptor models (RF, AdaBoost, XGBoost, LightGBM, SVR,
